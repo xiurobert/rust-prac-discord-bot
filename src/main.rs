@@ -1,3 +1,20 @@
+/*
+ * This file is part of the rust-prac-discord-bot distribution
+ * (https://github.com/xiurobert/rust-prac-discord-bot)
+ * Copyright (c) 2022 Robert X
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 use std::env;
 
 use serenity::{
@@ -70,8 +87,15 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    println!("
+    rust-prac-discord-bot  Copyright (C) 2022  Robert
+    This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions; type `show c' for details.");
+    // TODO: Implement 'show w' and 'show c'
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
-    let mut client = Client::builder(&token).event_handler(Handler).await.expect("Error creating client!");
+    let mut client = Client::builder(&token).
+        event_handler(Handler).await.expect("Error creating client!");
 
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
