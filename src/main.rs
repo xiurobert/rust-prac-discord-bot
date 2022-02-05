@@ -31,7 +31,7 @@ impl EventHandler for Handler {
 
     async fn message(&self, ctx: Context, msg: Message) {
         let bot_prefix: char = '!';
-        if msg.content.len() >= 1 && char::from(msg.content.as_bytes()[0]) == bot_prefix {
+        if !msg.content.is_empty() && char::from(msg.content.as_bytes()[0]) == bot_prefix {
             let command_and_args = &msg.content[1..];
             // println!("Text: {}", command_and_args);
             let info: Vec<&str> = command_and_args.split(' ').collect();
@@ -71,10 +71,24 @@ impl EventHandler for Handler {
                         ctx,
                         "Nothing here yet, lol".to_string()
                     ).await;
+                } else if command == "kick" {
+                    if info.len() == 2 {
+                        let user_id = info[1];
+                        let _ = msg.channel_id.say(
+                            ctx,
+                            format!("Are you REALLY sure you want to kick: {}? Type **!confirm kick** to confirm", user_id)
+                        ).await;
+                    } else {
+                        let _ = msg.channel_id.say(
+                            ctx,
+                            "Usage: !kick <user_id>".to_string()
+                        ).await;
+                    }
+
                 } else {
                     let _ = msg.channel_id.say(
                         ctx,
-                        "Command not found".to_string()
+                        "Command not found. Type **!help** to receive help".to_string()
                     ).await;
                 }
             }
@@ -91,7 +105,8 @@ async fn main() {
     rust-prac-discord-bot  Copyright (C) 2022  Robert
     This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
     This is free software, and you are welcome to redistribute it
-    under certain conditions; type `show c' for details.");
+    under certain conditions; type `show c' for details.
+    ");
     // TODO: Implement 'show w' and 'show c'
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
     let mut client = Client::builder(&token).
