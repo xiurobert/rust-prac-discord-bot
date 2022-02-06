@@ -40,7 +40,6 @@ impl EventHandler for Handler {
         let bot_prefix: char = '!';
         if !msg.content.is_empty() && char::from(msg.content.as_bytes()[0]) == bot_prefix {
             let command_and_args = &msg.content[1..];
-            // println!("Text: {}", command_and_args);
             let info: Vec<&str> = command_and_args.split(' ').collect();
             if !info.is_empty() {
                 let command = info[0];
@@ -122,11 +121,11 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
-    println!(launch_text());
-    let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
+    println!("{}", launch_text());
+    let token = env::var("DISCORD_TOKEN")
+        .expect("Expected a token in the environment");
     let mut client = Client::builder(&token).
         event_handler(Handler).await.expect("Error creating client!");
-
     if let Err(why) = client.start().await {
         println!("Client error: {:?}", why);
     }
