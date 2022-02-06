@@ -13,7 +13,7 @@ authors = ["xiurobert"]
 [dependencies.serenity]
 version = "0.10.10"
 default-features = false
-features = ["client", "gateway", "model", "rustls_backend"]
+features = ["client", "gateway", "model", "rustls_backend", "cache"]
 
 [dependencies.tokio]
 version = "1.16.1"
