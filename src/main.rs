@@ -17,8 +17,13 @@
  */
 mod strings;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 use std::env;
+use std::time::SystemTime;
+use reqwest::StatusCode;
+use serde_json::Value;
+
+//use serde_json::{Result, Value};
 
 use serenity::{async_trait, Client, model::{channel::Message, gateway::Ready}};
 use serenity::client::{Context, EventHandler};
@@ -87,14 +92,39 @@ impl EventHandler for Handler {
 
                             for role in member_author.roles {
                                 if roles_that_can_kick.contains_key(&role) {
-                                    let member_to_kick = guild
-                                        .member(&ctx, info[1].parse::<u64>().unwrap())
-                                        .await.unwrap();
-                                    let _ = guild.kick(&ctx, &member_to_kick).await;
-                                    let _ = msg.channel_id.say(
-                                        ctx,
-                                        format!("Kicked {}", &member_to_kick.user.name)
-                                    ).await;
+                                    if msg.mentions.is_empty() {
+                                        // we assume they submitted a discord tag instead.
+                                        // we try to find that user
+                                        let possible_member = guild.search_members(&ctx, info[1], Some(1)).await;
+                                        match possible_member {
+                                            Ok(members) => {
+                                                let member = members.first().unwrap();
+                                                let _ = member.kick(&ctx).await;
+                                                let _ = msg.channel_id.say(
+                                                    &ctx,
+                                                    format!("Kicked {}", &member.user.name)
+                                                ).await;
+                                            },
+                                            Err(e) => {
+                                                println!("Error: {:?}", e);
+                                                let _ = msg.channel_id.say(&ctx, "Could not find user.").await;
+                                            }
+                                        }
+                                    } else if msg.mentions.len() == 1 {
+                                        let member_to_kick = guild
+                                            .member(&ctx, msg.mentions[0].id)
+                                            .await.unwrap();
+                                        let _ = guild.kick(&ctx, &member_to_kick).await;
+                                        let _ = msg.channel_id.say(
+                                            &ctx,
+                                            format!("Kicked {}", &member_to_kick.user.name)
+                                        ).await;
+                                    } else {
+                                        // you aren't allowed to kick more than 1 user at a time.
+                                        let _ = msg.reply_ping(&ctx,
+                                                               "You can only kick one \
+                                                               user at a time.").await;
+                                    }
                                     break;
                                 }
                             }
@@ -105,7 +135,67 @@ impl EventHandler for Handler {
                                                     o use this command.").await;
                         }
                     }
+                } else if command == "trollpinaclbot" {
+                    let _ = msg.channel_id.say(&ctx,
+                                               "!overwatchstats PiNaCl#1288").await;
+                } else if command == "overwatchstats" {
 
+                    let _ = msg.channel_id.say(&ctx,
+                                               "Now attempting to fetch Overwatch stats").await;
+                    let now = SystemTime::now();
+                    // assume info[1] contains the OW tag
+                    let ow_tag = info[1].replace('#', "-");
+                    let result = reqwest::get(
+                        format!("https://best-overwatch-api.herokuapp.com/player/pc/us/{}"
+                                , ow_tag)).await;
+                    match result {
+                        Ok(result) => {
+                            if result.status() == StatusCode::OK {
+                                let _ = msg.channel_id.say(&ctx,
+                                                           "Fetched Overwatch stats").await;
+                                let the_stuff: Value = serde_json::from_str(
+                                    &result.text().await.unwrap()).unwrap();
+                                // make embed
+                                let _ = msg.channel_id.send_message(&ctx, |m| {
+                                    let total_endorsements = the_stuff["endorsement"]["teammate"]["rate"].as_u64().unwrap() +
+                                        the_stuff["endorsement"]["shotcaller"]["rate"].as_u64().unwrap() +
+                                        the_stuff["endorsement"]["sportsmanship"]["rate"].as_u64().unwrap();
+                                    m.embed(|e| {
+                                        e.title(format!("Overwatch Stats for {}", &info[1]));
+                                        e.thumbnail(the_stuff["portrait"].as_str().unwrap());
+                                        e.image(the_stuff["star"].as_str().unwrap());
+                                        e.color(0xFFFF00);
+                                        e.description(format!("{}", the_stuff["username"]));
+                                        e.field("Level", format!("{}", the_stuff["level"]), true);
+                                        e.field("Competitive Rank", "Bronze", true);
+                                        e.field("Competitive Wins", format!("{}", the_stuff["games"]["competitive"]["won"]), true);
+                                        e.field("Competitive Losses", format!("{}", the_stuff["games"]["competitive"]["lost"]), true);
+                                        e.field("Competitive Draws", format!("{}", the_stuff["games"]["competitive"]["draw"]), true);
+                                        e.field("Quickplay Wins", format!("{}", the_stuff["games"]["quickplay"]["won"]), true);
+                                        e.field("Good Teammate endorsements", format!("{}", the_stuff["endorsement"]["teammate"]["rate"]), true);
+                                        e.field("Shotcaller endorsements", format!("{}", the_stuff["endorsement"]["shotcaller"]["rate"]), true);
+                                        e.field("Sportsmanship endorsements", format!("{}", the_stuff["endorsement"]["sportsmanship"]["rate"]), true);
+                                        e.field("Endorsement level", format!("{}", the_stuff["endorsement"]["level"]), true);
+                                        e.field("Total endorsements", format!("{}", total_endorsements), true);
+                                        e
+                                    })
+                                }).await;
+                                // let _ = msg.channel_id.say(&ctx,
+                                //                            &the_stuff["level"]).await;
+                            } else if result.status() == StatusCode::NOT_FOUND {
+                                let _ = msg.reply_ping(&ctx,
+                                                       "Could not find Overwatch stats for that user.").await;
+                            }
+                        },
+                        Err(e) => {
+                            println!("Error: {:?}", e);
+                            let _ = msg.channel_id.say(&ctx, "Server error with OW API.\
+                             Please try again later").await;
+                        }
+                    }
+                    let _ = msg.channel_id.say(&ctx,
+                                               format!("Done, took {:?}",
+                                                       now.elapsed().unwrap())).await;
                 } else {
                     let _ = msg.channel_id.say(ctx, not_found()).await;
                 }

@@ -8,7 +8,9 @@ authors = ["xiurobert"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-
+reqwest = "0.11.9"
+serde = "1.0.136"
+serde_json = "1.0.78"
 
 [dependencies.serenity]
 version = "0.10.10"
